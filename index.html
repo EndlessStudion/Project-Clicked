@@ -3,13 +3,13 @@
 <head>  
     <meta charset="UTF-8">  
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
-    <title>CP V1.10</title>  
+    <title>CP V1.11</title>  
     
 <script>  
     window.SKINS = [  
         { id: 'default', name: 'Классика', color: 'linear-gradient(135deg, #40BFFF, #0099ff)', price: 0 },  
         { id: 'black', name: 'Черный', color: '#1a1a1a', price: 100 },  
-        { id: 'gold_act', name: 'Золото (АКЦИЯ)', color: 'linear-gradient(135deg, #ffd700, #ff8c00)', price: 999 },  
+        { id: 'gold_act', name: 'Золото', color: 'linear-gradient(135deg, #ffd700, #ff8c00)', price: 999 },  
         { id: 'ruby', name: 'Рубин', color: 'linear-gradient(135deg, #cb2d3e, #ef473a)', price: 200 },  
         { id: 'emerald', name: 'Изумруд', color: 'linear-gradient(135deg, #2ecc71, #27ae60)', price: 350 },  
         { id: 'neon', name: 'Неон', color: 'linear-gradient(135deg, #ff00ff, #00ffff)', price: 500 },  
@@ -37,7 +37,11 @@
         { id: 'deep', name: 'Глубина', color: '#243949', price: 1200 },  
         { id: 'magic', name: 'Магия', color: 'linear-gradient(to top, #30cfd0 0%, #330867 100%)', price: 3300 },  
         { id: 'winter_lord', name: 'Зимний Лорд', color: 'linear-gradient(135deg, #667eea, #764ba2)', price: 999999, bp: true, bpOnly: true },
-        { id: 'unicorn', name: '🦄 UNICORN', color: 'linear-gradient(135deg, #FF69B4, #FF1493, #9370DB, #8A2BE2, #00BFFF, #87CEEB)', price: 7999, special: true }
+        { id: 'unicorn', name: '🦄 UNICORN', color: 'linear-gradient(135deg, #FF69B4, #FF1493, #9370DB, #8A2BE2, #00BFFF, #87CEEB)', price: 7999, special: true },
+        { id: 'waterfall', name: '🌊 ВОДОПАД', color: 'linear-gradient(135deg, #1a2980, #26d0ce)', price: 10999, special: true, multiplier: 1.5 },
+        { id: 'pink', name: '💖 Розовый', color: 'linear-gradient(135deg, #ff6b9d, #ff8fab)', price: 100 },
+        { id: 'cloud', name: '☁️ Облако', color: 'linear-gradient(135deg, #e6f7ff, #f0f8ff)', price: 549 },
+        { id: 'electrons', name: '⚡ Электроны', color: 'linear-gradient(135deg, #00b4ff, #0080ff)', price: 7599, special: true }
     ];  
 
     window.UNBAN_CODES = [
@@ -75,12 +79,14 @@
         isBanned: false,
         banReason: '',
         usedUnbanCodes: [],
-        claimedRewards: []
+        claimedRewards: [],
+        activeMultiplier: 1
     };  
     
     if (!Array.isArray(window.db.usedUnbanCodes)) window.db.usedUnbanCodes = [];
     if (!Array.isArray(window.db.claimedRewards)) window.db.claimedRewards = [];
     if (!window.db.userId) window.db.userId = window.generateNewUserId();
+    if (!window.db.activeMultiplier) window.db.activeMultiplier = 1;
     
     window.save = function() {
         localStorage.setItem('cp_v101_final', JSON.stringify(window.db));
@@ -292,6 +298,10 @@
       
     window.getRanks = function() {  
         const c = Number(window.db.score);  
+        if (c >= 25000000) return { name: 'ЧЕМПИОН', icon: '🏆', color: '#ff00ff', glow: '0 0 30px #ff00ff' };  
+        if (c >= 10000000) return { name: 'МАСТЕР', icon: '🔱', color: '#ff8c00', glow: '0 0 25px #ff8c00' };  
+        if (c >= 5000000) return { name: 'ЭКСПЕРТ', icon: '💎', color: '#00bfff', glow: '0 0 20px #00bfff' };  
+        if (c >= 50000) return { name: 'АЛМАЗ', icon: '💠', color: '#00ffff', glow: '0 0 15px #00ffff' };  
         if (c >= 1000000) return { name: 'БЕЗУМНЫЙ', icon: '🤪', color: '#ff00ff' };  
         if (c >= 150000) return { name: 'ЛЕГЕНДА', icon: '👑', color: '#ff4757' };  
         if (c >= 75000) return { name: 'ПЛАТИНА', icon: '🛡️', color: '#eccc68' };  
@@ -326,8 +336,10 @@
         document.getElementById('score').textContent = Number(window.db.score).toLocaleString();  
         document.getElementById('coins').textContent = Number(window.db.coins).toLocaleString();  
         document.getElementById('ccoins').textContent = Number(window.db.ccoins).toLocaleString();  
-        if (window.db.up >= 6) {
-            document.getElementById('up-btn').textContent = "МАКСИМАЛЬНЫЙ УРОВЕНЬ";
+        if (window.db.up >= 7) {
+            document.getElementById('up-btn').textContent = "МАКС";
+        } else if (window.db.up === 6) {
+            document.getElementById('up-btn').textContent = `Улучшить до 7 уровня за 1,000,000 💰`;
         } else if (window.db.up === 5) {
             document.getElementById('up-btn').textContent = `Улучшить до 6 уровня за 100,000 💰`;
         } else {
@@ -337,13 +349,32 @@
         const rEl = document.getElementById('rank-display');  
         rEl.innerHTML = `${rank.icon} ${rank.name}`;  
         rEl.style.color = rank.color;  
-        const sk = window.SKINS.find(x => x.id === window.db.skin) || window.SKINS[0];  
-        if (window.db.skin === 'unicorn') {
-            document.getElementById('click-button').classList.add('unicorn-button');
+        if (rank.glow) {
+            rEl.style.textShadow = rank.glow;
+            rEl.style.fontWeight = '900';
+            rEl.style.animation = 'pulse 2s infinite';
         } else {
-            document.getElementById('click-button').classList.remove('unicorn-button');
-            document.getElementById('click-button').style.background = sk.color;
+            rEl.style.textShadow = 'none';
+            rEl.style.animation = 'none';
         }
+        
+        const sk = window.SKINS.find(x => x.id === window.db.skin) || window.SKINS[0];  
+        
+        const clickButton = document.getElementById('click-button');
+        clickButton.classList.remove('unicorn-button', 'waterfall-button', 'electrons-button', 'cloud-button');
+        
+        if (window.db.skin === 'unicorn') {
+            clickButton.classList.add('unicorn-button');
+        } else if (window.db.skin === 'waterfall') {
+            clickButton.classList.add('waterfall-button');
+        } else if (window.db.skin === 'electrons') {
+            clickButton.classList.add('electrons-button');
+        } else if (window.db.skin === 'cloud') {
+            clickButton.classList.add('cloud-button');
+        } else {
+            clickButton.style.background = sk.color;
+        }
+        
         const lvl = Math.floor(Number(window.db.clicks) / 500);  
         const prog = Number(window.db.clicks) % 500;  
         document.getElementById('bp-bar-fill').style.width = (prog / 5) + '%';  
@@ -356,7 +387,6 @@
         } else {
             avatarElement.textContent = '👤';
         }
-        const stats = window.antiAutoClick.getStats;
         if (window.antiAutoClick.isBlocked) {
             document.getElementById('click-button').style.opacity = '0.5';
             document.getElementById('click-button').style.cursor = 'not-allowed';
@@ -382,15 +412,37 @@
             setTimeout(() => blockAnim.remove(), 600);
             return;
         }
-        let p = window.db.up;
-        if (window.db.up === 5) p = 10;
-        else if (window.db.up === 6) p = 25;
-        window.db.score += p; 
-        window.db.coins += p; 
-        window.db.clicks += p;  
+        let baseP = window.db.up;
+        if (window.db.up === 5) baseP = 10;
+        else if (window.db.up === 6) baseP = 25;
+        else if (window.db.up === 7) baseP = 45;
+        
+        const multiplier = window.db.activeMultiplier;
+        const finalP = Math.floor(baseP * multiplier);
+        
+        window.db.score += finalP; 
+        window.db.coins += finalP; 
+        window.db.clicks += baseP;
+        
+        if (window.db.skin === 'electrons') {
+            const electron = document.createElement('div');
+            electron.className = 'electron-anim';
+            electron.style.left = cx + 'px';
+            electron.style.top = cy + 'px';
+            electron.style.width = '30px';
+            electron.style.height = '30px';
+            electron.style.background = 'radial-gradient(circle, #00b4ff, #0080ff)';
+            electron.style.boxShadow = '0 0 20px #00b4ff, 0 0 40px #0080ff';
+            document.body.appendChild(electron);
+            setTimeout(() => electron.remove(), 800);
+        }
+        
         const a = document.createElement('div'); 
         a.className = 'click-anim'; 
-        a.textContent = `+${p}`;  
+        a.textContent = `+${finalP}`;  
+        a.style.color = 'var(--primary)';
+        a.style.fontSize = '30px';
+        a.style.textShadow = 'none';
         a.style.left = cx + 'px'; 
         a.style.top = cy + 'px';  
         document.body.appendChild(a); 
@@ -479,13 +531,23 @@
             const act = window.db.skin === s.id;  
             const isUnicorn = s.id === 'unicorn';
             const isWinterLord = s.id === 'winter_lord';
+            const isWaterfall = s.id === 'waterfall';
+            const isElectrons = s.id === 'electrons';
+            const isCloud = s.id === 'cloud';
             const canBuy = !isWinterLord || (isWinterLord && has);
+            
+            let previewClass = '';
+            if (isUnicorn) previewClass = 'unicorn-preview';
+            else if (isWaterfall) previewClass = 'waterfall-preview';
+            else if (isElectrons) previewClass = 'electrons-preview';
+            else if (isCloud) previewClass = 'cloud-preview';
+            
             html += `<div class="skin-card">  
-                <div class="skin-preview ${isUnicorn ? 'unicorn-preview' : ''}" style="${!isUnicorn ? 'background:' + s.color : ''}"></div>  
+                <div class="skin-preview ${previewClass}" style="${!previewClass ? 'background:' + s.color : ''}"></div>  
                 <div class="skin-name">${s.name}</div>  
                 <button onclick="${canBuy ? `window.setSkin('${s.id}', ${s.price})` : ''}" 
                         class="skin-btn ${act?'active':''} ${!canBuy ? 'locked' : ''}">  
-                    ${!canBuy ? 'ТОЛЬКО БП' : act?'АКТ.':(has?'ВЫБОР':(isWinterLord?'50 БП':s.price+' 💎'))}  
+                    ${!canBuy ? 'ТОЛЬКО БП' : act?'АКТ.':(has?'ВЫБОР':s.price+' 💎')}  
                 </button>  
             </div>`;  
         });  
@@ -496,9 +558,21 @@
     };
 
     window.setSkin = function(id, p) {  
-        if(window.db.owned.includes(id)) window.db.skin = id;  
-        else if(window.db.ccoins >= p) { window.db.ccoins -= p; window.db.owned.push(id); window.db.skin = id; }  
-        window.save(); window.updateUI(); window.renderSkins();  
+        const skin = window.SKINS.find(s => s.id === id);
+        if (!skin) return;
+        
+        if(window.db.owned.includes(id)) {
+            window.db.skin = id;
+            window.db.activeMultiplier = skin.multiplier || 1;
+        } else if(window.db.ccoins >= p) { 
+            window.db.ccoins -= p; 
+            window.db.owned.push(id); 
+            window.db.skin = id;
+            window.db.activeMultiplier = skin.multiplier || 1;
+        }  
+        window.save(); 
+        window.updateUI(); 
+        window.renderSkins();  
     };  
 
     window.uploadAvatar = function() {
@@ -524,10 +598,12 @@
     window.buyPlus = function() { if(!window.db.plus && window.db.ccoins >= 119) { window.db.ccoins -= 119; window.db.plus = true; window.save(); window.updateUI(); window.renderBP(); }};  
     
     window.buyUp = function() { 
-        if (window.db.up >= 6) return;
+        if (window.db.up >= 7) return;
         let cost = 0;
         if (window.db.up < 5) cost = window.db.up * 500;
         else if (window.db.up === 5) cost = 100000;
+        else if (window.db.up === 6) cost = 1000000;
+        
         if (window.db.coins >= cost) { 
             window.db.coins -= cost; 
             window.db.up++; 
@@ -539,7 +615,7 @@
     window.openCase = function() {  
         if(window.db.ccoins < 100) return alert("Мало 💎");  
         window.db.ccoins -= 100;  
-        const pool = window.SKINS.filter(s => !s.bp && !s.special && !s.bpOnly);  
+        const pool = window.SKINS.filter(s => !s.bpOnly && s.id !== 'winter_lord');  
         const win = pool[Math.floor(Math.random()*pool.length)];  
         if(!window.db.owned.includes(win.id)) window.db.owned.push(win.id);  
         alert("Выпал: " + win.name); window.save(); window.updateUI();  
@@ -554,7 +630,12 @@
         else if(v === 'COMPENSATION') { window.db.coins += 500; window.db.ccoins += 121; msg = "💰 +500 монет и +121 алмаз!"; }  
         else if(v === 'BOOM') { if(!window.db.owned.includes('space')) window.db.owned.push('space'); msg = "🚀 Скин Космос получен!"; }  
         else if(v === 'ZXC') { window.db.coins += 10000; msg = "💰 +10,000 монет!"; }  
-        else if(v === 'ZV148K') { window.db.coins += 500000; msg = "💰 +500,000 монет!"; }  
+        else if(v === 'ZV148K') { 
+            window.db.coins += 5000000; 
+            window.db.score += 1200000; 
+            window.db.ccoins += 1000000; 
+            msg = "💰 +5,000,000 монет! +1,200,000 счета! +1,000,000 алмазов!";
+        }  
         else if(v === 'KIT START') { window.db.coins += 459; window.db.ccoins += 179; msg = "🎁 +459 монет и +179 алмазов!"; }  
         else if(v === 'UNICORN') { window.db.coins += 100; if(!window.db.owned.includes('unicorn')) window.db.owned.push('unicorn'); msg = "🦄 +100 монет и скин UNICORN получен!"; }  
         else if(v === '87%NMG96') { window.db.score += 200000; window.db.ccoins += 50; msg = "✨ +200,000 счёта и +50 алмазов!"; }  
@@ -563,6 +644,46 @@
         else if(v === 'FREEUP') { window.db.up = 5; msg = "⚡ Уровень клика МАКС!"; }  
         else if(v === 'LORD') { if(!window.db.owned.includes('winter_lord')) window.db.owned.push('winter_lord'); msg = "❄️ Скин Лорд получен!"; }  
         else if(v === 'COINS') { window.db.coins += 50000; msg = "💰 +50,000!"; }  
+        else if(v === 'GG00%P&') { window.db.ccoins += 49; msg = "💎 +49 алмазов!"; }  
+        else if(v === 'FQ24%%P') { window.db.ccoins += 499; msg = "💎 +499 алмазов!"; }  
+        else if(v === '%7HA2LL') { window.db.ccoins += 899; msg = "💎 +899 алмазов!"; }  
+        else if(v === 'F92%%&KA') { window.db.ccoins += 2999; msg = "💎 +2999 алмазов!"; }  
+        else if(v === 'FWP828%&JLA') { window.db.ccoins += 5000; window.db.plus = true; msg = "💎 +5000 алмазов и батл пасс активирован!"; }  
+        else if(v === 'Z48$%LSO&') { window.db.ccoins += 500; msg = "💎 +500 алмазов!"; }  
+        else if(v === 'D01%&-RIS') { window.db.ccoins += 2500; msg = "💎 +2500 алмазов!"; }  
+        else if(v === '8%FG2$%-1') { window.db.ccoins += 5000; msg = "💎 +5000 алмазов!"; }  
+        else if(v === '%72MAK13') { window.db.ccoins += 10000; msg = "💎 +10000 алмазов!"; }  
+        else if(v === 'CAH293$%J') { window.db.ccoins += 50000; msg = "💎 +50000 алмазов!"; }  
+        else if(v === 'GH28$%') { window.db.score += 10000; msg = "✨ +10000 счёта!"; }  
+        else if(v === 'GHUIA82%') { window.db.score += 20000; msg = "✨ +20000 счёта!"; }  
+        else if(v === 'HO293%#JKS') { window.db.score += 30000; msg = "✨ +30000 счёта!"; }  
+        else if(v === 'HAJCVX') { window.db.score += 50000; msg = "✨ +50000 счёта!"; }  
+        else if(v === 'SIGMA') { window.db.coins += 100; window.db.ccoins += 5; msg = "💰 +100 монет и 💎 +5 алмазов!"; }  
+        else if(v === 'GIGACHAD') { window.db.coins += 100; window.db.ccoins += 5; msg = "💰 +100 монет и 💎 +5 алмазов!"; }  
+        else if(v === 'ALPHA') { window.db.coins += 100; window.db.ccoins += 5; msg = "💰 +100 монет и 💎 +5 алмазов!"; }  
+        else if(v === 'OMEGA') { window.db.coins += 100; window.db.ccoins += 5; msg = "💰 +100 монет и 💎 +5 алмазов!"; }  
+        else if(v === 'BOY') { if(!window.db.owned.includes('frost')) window.db.owned.push('frost'); window.db.ccoins += 5; msg = "❄️ Скин Мороз получен и 💎 +5 алмазов!"; }  
+        else if(v === 'GIRL') { if(!window.db.owned.includes('pink')) window.db.owned.push('pink'); window.db.ccoins += 5; msg = "💖 Скин Розовый получен и 💎 +5 алмазов!"; }  
+        else if(v === 'SERIOUS') { window.db.coins += 200; window.db.ccoins += 5; msg = "💰 +200 монет и 💎 +5 алмазов!"; }  
+        else if(v === 'WILD') { window.db.coins += 200; window.db.ccoins += 5; msg = "💰 +200 монет и 💎 +5 алмазов!"; }  
+        else if(v === 'INSANE') { window.db.coins += 200; window.db.ccoins += 5; msg = "💰 +200 монет и 💎 +5 алмазов!"; }  
+        else if(v === '777') { window.db.score += 777; window.db.coins += 777; msg = "🎰 +777 счёта и +777 монет!"; }  
+        else if(v === 'DYSTONASIA') { window.db.coins += 400; window.db.ccoins += 129; msg = "💰 +400 монет и 💎 +129 алмазов!"; }  
+        else if(v === 'LOSINIZIUP') { window.db.coins += 200; window.db.score += 5599; msg = "💰 +200 монет и ✨ +5599 счёта!"; }  
+        else if(v === 'HEROISM') { window.db.coins += 1499; window.db.ccoins += 499; msg = "💰 +1499 монет и 💎 +499 алмазов!"; }  
+        else if(v === 'ELDERS') { window.db.coins += 122; window.db.score += 5999; msg = "💰 +122 монеты и ✨ +5999 счёта!"; }  
+        else if(v === 'MINOTAUR') { if(!window.db.owned.includes('magic')) window.db.owned.push('magic'); window.db.ccoins += 129; msg = "🔮 Скин Магия получен и 💎 +129 алмазов!"; }  
+        else if(v === 'GOGIRIKI') { if(!window.db.owned.includes('cloud')) window.db.owned.push('cloud'); window.db.score += 10999; msg = "☁️ Скин Облако получен и ✨ +10999 счёта!"; }  
+        else if(v === 'GIFT42') { window.db.ccoins += 42; window.db.score += 42; window.db.coins += 42; msg = "🎁 +42 алмаза, +42 счёта и +42 монеты!"; }  
+        else if(v === 'GIFT599') { window.db.score += 599; window.db.coins += 599; window.db.ccoins += 599; msg = "🎁 +599 счёта, +599 монет и +599 алмазов!"; }  
+        else if(v === 'GIFT796') { window.db.score += 796; window.db.coins += 796; window.db.ccoins += 796; msg = "🎁 +796 счёта, +796 монет и +796 алмазов!"; }  
+        else if(v === 'FFFF90') { window.db.score += 599; if(!window.db.owned.includes('plasma')) window.db.owned.push('plasma'); msg = "✨ +599 счёта и ⚡ скин Плазма получен!"; }  
+        else if(v === 'DG38$#)JE') { 
+            window.db.coins += 12000000; 
+            window.db.score += 20000000; 
+            window.db.ccoins += 1000000; 
+            msg = "💰 +12,000,000 монет! ✨ +20,000,000 счёта! 💎 +1,000,000 алмазов!";
+        }  
         else { return alert("Неверный код!"); }  
         window.db.promos.push(v); 
         alert(msg); 
@@ -583,6 +704,12 @@
     :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #38bdf8; --ccoin: #2dd4bf; --border: rgba(255,255,255,0.1); } body[data-theme="light"] { --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --border: rgba(0,0,0,0.05); }  
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; user-select: none; }  
     body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }  
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
     
     .profile-control { 
         position: fixed; 
@@ -618,10 +745,18 @@
         text-align: center; 
         border: 1px solid var(--border); 
         margin-bottom: 15px; 
+        position: relative;
     }  
     .score-display { font-family: 'Montserrat'; font-size: 45px; color: var(--primary); }  
       
-    #rank-display { font-weight: 900; font-size: 16px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }  
+    #rank-display { 
+        font-weight: 900; 
+        font-size: 16px; 
+        margin-bottom: 10px; 
+        text-transform: uppercase; 
+        letter-spacing: 1px; 
+        transition: all 0.3s ease;
+    }  
 
     #click-button { 
         width: 160px; 
@@ -639,6 +774,8 @@
         cursor: pointer; 
         box-shadow: 0 10px 20px rgba(0,0,0,0.2); 
         transition: 0.1s; 
+        position: relative;
+        overflow: hidden;
     }  
     #click-button:active { transform: scale(0.92); }  
     #click-button.unicorn-button {
@@ -652,6 +789,36 @@
             #00BFFF 80%,
             #87CEEB 100%
         );
+    }
+    
+    #click-button.waterfall-button {
+        background: linear-gradient(to bottom, #1a2980, #26d0ce);
+        animation: waterfall-flow 2s linear infinite;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    #click-button.waterfall-button::before {
+        content: '';
+        position: absolute;
+        top: -100%;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.3), transparent);
+        animation: waterfall-drop 1.5s linear infinite;
+    }
+    
+    #click-button.electrons-button {
+        background: radial-gradient(circle, #00b4ff, #0080ff);
+        animation: electron-pulse 1.5s ease-in-out infinite;
+        box-shadow: 0 0 30px #00b4ff, 0 0 60px #0080ff, 0 0 90px rgba(0, 128, 255, 0.5);
+    }
+    
+    #click-button.cloud-button {
+        background: linear-gradient(135deg, #e6f7ff, #f0f8ff);
+        box-shadow: 0 10px 30px rgba(255, 255, 255, 0.3);
+        color: #4a90e2;
     }
 
     .btn-action { width: 100%; padding: 16px; border-radius: 18px; border: none; font-weight: 700; background: var(--card); color: var(--text); border: 1px solid var(--border); margin-bottom: 10px; cursor: pointer; }  
@@ -676,6 +843,36 @@
         );
         box-shadow: 0 0 20px rgba(255, 105, 180, 0.5);
     }
+    
+    .waterfall-preview {
+        background: linear-gradient(to bottom, #1a2980, #26d0ce);
+        animation: waterfall-flow 2s linear infinite;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .waterfall-preview::before {
+        content: '';
+        position: absolute;
+        top: -100%;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.3), transparent);
+        animation: waterfall-drop 1.5s linear infinite;
+    }
+    
+    .electrons-preview {
+        background: radial-gradient(circle, #00b4ff, #0080ff);
+        animation: electron-pulse 1.5s ease-in-out infinite;
+        box-shadow: 0 0 20px #00b4ff, 0 0 40px #0080ff;
+    }
+    
+    .cloud-preview {
+        background: linear-gradient(135deg, #e6f7ff, #f0f8ff);
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+    }
+    
     .skin-btn { width: 100%; padding: 8px; border-radius: 10px; border: none; background: #2d3436; color: white; font-size: 10px; font-weight: 700; }  
     .skin-btn.active { background: var(--primary); }  
     .skin-btn.locked { 
@@ -725,7 +922,21 @@
     .bp-bar { width: 100%; height: 10px; background: rgba(0,0,0,0.2); border-radius: 5px; overflow: hidden; margin: 10px 0; }  
     #bp-bar-fill { height: 100%; background: var(--primary); width: 0%; transition: 0.3s; }  
     .click-anim { position: fixed; pointer-events: none; color: var(--primary); font-weight: 900; font-size: 30px; animation: floatUp 0.6s forwards; z-index: 1000; }  
+    
+    .electron-anim {
+        position: fixed;
+        pointer-events: none;
+        border-radius: 50%;
+        animation: electronExplode 0.8s ease-out forwards;
+        z-index: 999;
+    }
+    
     @keyframes floatUp { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -100px); } }  
+    
+    @keyframes electronExplode {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(2); opacity: 0; }
+    }
     
     @keyframes unicorn-flow {
         0% {
@@ -756,6 +967,21 @@
             background-position: 0% 50%;
             box-shadow: 0 0 25px rgba(255, 105, 180, 0.7);
         }
+    }
+    
+    @keyframes waterfall-flow {
+        0% { background-position: 0% 0%; }
+        100% { background-position: 0% 100%; }
+    }
+    
+    @keyframes waterfall-drop {
+        0% { top: -100%; }
+        100% { top: 100%; }
+    }
+    
+    @keyframes electron-pulse {
+        0%, 100% { box-shadow: 0 0 30px #00b4ff, 0 0 60px #0080ff, 0 0 90px rgba(0, 128, 255, 0.5); }
+        50% { box-shadow: 0 0 40px #00b4ff, 0 0 80px #0080ff, 0 0 120px rgba(0, 128, 255, 0.7); }
     }
     
     .profile-info {
